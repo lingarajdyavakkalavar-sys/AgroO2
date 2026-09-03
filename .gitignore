@@ -1,0 +1,89 @@
+# ============================================================
+# ENVIRONMENT & SECRETS (CRITICAL: never commit these)
+# ============================================================
+# .env files MUST never be committed. They are for local development only.
+# Vercel and Render inject these via dashboard, not from the repo.
+# If .env is already tracked by Git, remove it immediately and rotate credentials.
+
+# .env and all variants - NEVER commit
+.env
+.env.local
+.env.production
+.env.development
+.env.test
+*.env
+*.env.*
+!.env.example  # allowed: safe template with placeholders only
+
+# Firebase Service Account - NEVER commit contains private key
+firebase-sa.json
+gcp-sa.json
+
+# Token files, credentials dumps
+*.token.txt
+*.credentials.json
+*secret*.txt
+*auth*.json
+
+# Python bytecode & caches
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+ENV/
+.pytest_cache/
+.coverage
+.mypy_cache/
+
+# Python package environments (local dev only)
+.coverage
+htmlcov/
+.pytest_cache/
+
+# ============================================================
+# NODE & FRONTEND (generated/local build output)
+# ============================================================
+node_modules/
+dist/
+dist-ssr/
+dev-dist/
+.local
+
+# Next.js / Vite build outputs
+.next/
+
+# ============================================================
+# IDE & OPERATING SYSTEM
+# ============================================================
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+
+# ============================================================
+# CLOUD DEPLOYMENT ARTIFACTS (platform-specific)
+# ============================================================
+# Vercel
+.vercel/
+vercel.json  # OK to commit if needed for rewrites, but NO secrets
+
+# Render
+.render/
+
+# Docker (if used)
+Dockerfile
+.dockerignore
+
+# ============================================================
+# SECURITY: Secret Rotation Reminder
+# ============================================================
+# If you previously committed secrets, they are exposed in Git history.
+# Use: git filter-branch or BFG Repo-Cleaner to remove them, then rotate.
+# Never push real credentials to any Git repository.
+# ============================================================
