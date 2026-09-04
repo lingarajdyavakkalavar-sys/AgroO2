@@ -2,6 +2,7 @@ services:
   - type: web
     name: plant-co2-backend
     runtime: python
+    pythonVersion: "3.11.2"
     plan: free
     region: oregon
     buildCommand: pip install --no-cache-dir -r requirements.txt
