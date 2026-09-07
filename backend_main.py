@@ -3,7 +3,6 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from google.cloud import firestore
 
 from app.core.config import get_settings
 from app.core.firebase import init_firebase
@@ -16,7 +15,10 @@ settings = get_settings()
 async def lifespan(app: FastAPI):
     """Application lifespan events."""
     # Startup
-    init_firebase()
+    try:
+        init_firebase()
+    except Exception as e:
+        print(f"Firebase init note: {e}")
     try:
         from app.api.v1.endpoints.seed import seed_products, seed_test_user
         await seed_products()

@@ -7,6 +7,8 @@ services:
     region: oregon
     buildCommand: pip install --no-cache-dir -r requirements.txt
     startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeploy: true
     envVars:
       - key: PYTHON_VERSION
         value: "3.11.9"
@@ -15,7 +17,7 @@ services:
       - key: DEBUG
         value: "False"
       - key: FRONTEND_URL
-        value: https://your-vercel-app.vercel.app
+        value: https://your-frontend-app.vercel.app
       - key: FIREBASE_PROJECT_ID
         value: plant-co2-farm
       - key: GCP_PROJECT_ID
@@ -35,12 +37,10 @@ services:
       - key: RAZORPAY_WEBHOOK_SECRET
         sync: false
       - key: JWT_SECRET_KEY
-        sync: false
+        generateValue: true
       - key: GEMINI_API_KEY
         sync: false
       - key: SENDGRID_API_KEY
         sync: false
       - key: SENDGRID_FROM_EMAIL
         value: orders@plant-co2-farm.com
-    healthCheckPath: /health
-    autoDeploy: true
