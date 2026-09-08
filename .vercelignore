@@ -1,0 +1,11 @@
+# Ignore backend files so Vercel only builds and serves the static frontend
+*.py
+app/
+backend_config.py
+backend_main.py
+requirements.txt
+runtime.txt
+render.yaml
+venv/
+.pytest_cache/
+__pycache__/
