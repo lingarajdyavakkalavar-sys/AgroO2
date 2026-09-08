@@ -1,17 +1,16 @@
-"""Application configuration using Pydantic Settings with Secret Manager support."""
+"""Application configuration using Pydantic Settings with optional Secret Manager support."""
 
 import json
 import os
 from functools import lru_cache
 from typing import Optional
 
-from google.cloud import secretmanager
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    """Application settings loaded from environment variables and Secret Manager."""
+    """Application settings loaded from environment variables and optional Secret Manager."""
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -21,15 +20,10 @@ class Settings(BaseSettings):
     )
 
     # FRONTEND_URL is set by the deployment platform (Vercel/Render).
-    # When developing locally, set: FRONTEND_URL=http://localhost:5173
-    # When deployed, configure via your platform's dashboard (Vercel/Render).
     FRONTEND_URL: str = Field(default="http://localhost:5173")
-    # Server port - Render and Cloud Run provide $PORT env var
     PORT: int = Field(default=8000)
-    # Application environment
     APP_ENV: str = Field(default="development")
     DEBUG: bool = Field(default=True)
-    # API prefix for all routes
     API_PREFIX: str = Field(default="/api/v1")
 
     # Firebase
@@ -65,17 +59,18 @@ class Settings(BaseSettings):
     STANDARD_DELIVERY_FEE_PAISE: int = Field(default=13000)
     EXPRESS_DELIVERY_FEE_PAISE: int = Field(default=30000)
 
-    # Secret Manager
-    _secret_client: Optional[secretmanager.SecretManagerServiceClient] = None
+    # Secret Manager client placeholder
+    _secret_client: Optional[object] = None
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._load_secrets_from_manager()
 
     def _load_secrets_from_manager(self) -> None:
-        """Load secrets from Google Cloud Secret Manager in production."""
+        """Load secrets from Google Cloud Secret Manager if client is available in production."""
         if self.APP_ENV == "production" and self.GCP_PROJECT_ID:
             try:
+                from google.cloud import secretmanager
                 self._secret_client = secretmanager.SecretManagerServiceClient()
                 self._load_secret("firebase-service-account", "FIREBASE_SERVICE_ACCOUNT")
                 self._load_secret("gemini-api-key", "GEMINI_API_KEY")
@@ -85,10 +80,10 @@ class Settings(BaseSettings):
                 self._load_secret("jwt-secret", "JWT_SECRET_KEY")
                 self._load_secret("sendgrid-api-key", "SENDGRID_API_KEY")
             except Exception as e:
-                print(f"Warning: Failed to load secrets from Secret Manager: {e}")
+                print(f"Note: Google Secret Manager not available or skipped: {e}")
 
     def _load_secret(self, secret_id: str, attr_name: str) -> None:
-        """Load a single secret from Secret Manager."""
+        """Load a single secret from Secret Manager if enabled."""
         if not self._secret_client:
             return
         try:
@@ -102,12 +97,10 @@ class Settings(BaseSettings):
     @property
     def firebase_service_account_dict(self) -> dict:
         """Parse Firebase service account from JSON file or JSON string."""
-        # Try file path first
         if self.FIREBASE_SERVICE_ACCOUNT_PATH and os.path.exists(self.FIREBASE_SERVICE_ACCOUNT_PATH):
             with open(self.FIREBASE_SERVICE_ACCOUNT_PATH, "r") as f:
                 return json.load(f)
         
-        # Try JSON string from env
         if self.FIREBASE_SERVICE_ACCOUNT:
             sa_json = self.FIREBASE_SERVICE_ACCOUNT
             if "\\n" in sa_json:
