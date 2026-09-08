@@ -1,9 +1,17 @@
-"""Weather, Carbon, Diagnoses, Chat, Orders, Products API routers."""
-from fastapi import APIRouter, UploadFile, File, Form
+"""Weather, Carbon, Diagnoses, Chat, Orders, Products API routers integrated with Gemini AI."""
+
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, status
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 
+from app.services.gemini_service import gemini_service
+
 router = APIRouter()
+
+# MAX upload size: 10MB
+MAX_FILE_SIZE = 10 * 1024 * 1024
+ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/jpg"}
+
 
 # 1. Weather
 @router.get("/weather")
@@ -30,6 +38,7 @@ async def get_weather():
         }
     }
 
+
 # 2. Carbon
 @router.get("/carbon/score")
 async def get_carbon_score():
@@ -39,7 +48,8 @@ async def get_carbon_score():
         "total_annual_co2": 5.75,
     }
 
-# 3. Diagnoses
+
+# 3. Diagnoses (AI Disease Detector)
 @router.get("/diagnoses")
 async def list_diagnoses():
     return [
@@ -55,27 +65,53 @@ async def list_diagnoses():
         }
     ]
 
+
 @router.post("/diagnoses/analyze")
 async def analyze_disease(
     file: UploadFile = File(...),
     crop: Optional[str] = Form("Tomato"),
     farm_id: Optional[str] = Form(None)
 ):
+    """Analyze crop foliage photo using Gemini 3.1 Multimodal Vision AI."""
+    if file.content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Unsupported file format '{file.content_type}'. Allowed types: JPG, PNG, WEBP."
+        )
+
+    image_bytes = await file.read()
+    if len(image_bytes) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="File size exceeds maximum limit of 10MB."
+        )
+
+    analysis = await gemini_service.analyze_crop_disease(
+        image_bytes=image_bytes,
+        mime_type=file.content_type,
+        crop_hint=crop or "Tomato"
+    )
+
     return {
         "id": f"diag-{file.filename}",
-        "crop": crop or "Tomato",
-        "disease": "Early Blight (Alternaria solani)",
-        "confidence": 0.92,
+        "crop": analysis.get("crop", crop or "Tomato"),
+        "disease": analysis.get("disease", "Unknown Condition"),
+        "confidence": analysis.get("confidence", 0.90),
+        "confidence_level": analysis.get("confidenceLevel", "high"),
         "image_url": "/images/tomato_early_blight.jpg",
-        "symptoms": "Concentric target spots detected on foliage with mild chlorosis.",
-        "recommended_action": "Apply 5ml/L organic neem seed kernel extract and reduce leaf wetness period."
+        "symptoms": analysis.get("symptoms", "Pathology characteristics identified."),
+        "recommended_action": analysis.get("recommendedAction", "Apply certified organic treatments."),
+        "urgent_warning": analysis.get("urgentWarning", False),
+        "disclaimer": analysis.get("disclaimer", "Screening estimate only. Verify with local agricultural extension officer.")
     }
 
-# 4. Chat
+
+# 4. Chat (AI Advisor)
 class ChatMessagePayload(BaseModel):
     message: str
     farm_id: Optional[str] = None
     context: Optional[Dict[str, Any]] = None
+
 
 @router.get("/chat/suggestions")
 async def get_chat_suggestions():
@@ -86,16 +122,26 @@ async def get_chat_suggestions():
         "Suggest organic pest control for tomato blight",
     ]
 
+
 @router.post("/chat/message")
 async def send_chat_message(payload: ChatMessagePayload):
-    msg = payload.message.lower()
-    if "co2" in msg or "carbon" in msg or "calculate" in msg:
-        reply = "Based on your acreage, adopting biochar application + cover crops can sequester ~1.15 tCO₂e per acre per year directly in your topsoil!"
-    elif "pest" in msg or "blight" in msg or "disease" in msg:
-        reply = "For early blight on tomato leaves, prune infected lower leaves and apply 5ml/L neem oil solution during early morning hours."
-    else:
-        reply = "Namaste! As your Krishi Mitra AI Advisor, I can help you compute carbon sequestration, select certified biochar, and manage organic crop health."
-    return {"reply": reply}
+    """Generate response for AI Advisor using Gemini 3.1 model."""
+    if not payload.message or not payload.message.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Message prompt cannot be empty."
+        )
+
+    res = await gemini_service.generate_advisor_guidance(
+        user_message=payload.message.strip(),
+        farm_context=payload.context
+    )
+
+    return {
+        "reply": res["reply"],
+        "structured": res.get("structured", {})
+    }
+
 
 # 5. Products & Orders
 @router.get("/products")
@@ -109,6 +155,7 @@ async def list_products():
             "supplier": "GreenTech Carbon Capture Ltd"
         }
     ]
+
 
 @router.post("/orders")
 async def create_order():
