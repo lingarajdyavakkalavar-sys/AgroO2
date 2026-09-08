@@ -1,5 +1,4 @@
-@import "tailwindcss";
-
+@tailwind base;
 @layer base {
   :root {
     --bg-page: #F7F9F8;
@@ -56,6 +55,9 @@
     background: #94A3B8;
   }
 }
+
+@tailwind components;
+@tailwind utilities;
 
 /* Animations and custom utilities */
 @keyframes pulse-subtle {

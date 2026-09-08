@@ -36,7 +36,7 @@ class GeminiService:
 
     def __init__(self):
         self.settings = get_settings()
-        self.model_name = getattr(self.settings, "GEMINI_MODEL", "gemini-2.5-flash") or "gemini-2.5-flash"
+        self.model_name = getattr(self.settings, "GEMINI_MODEL", "gemini-1.5-flash") or "gemini-1.5-flash"
         self._client = None
 
     def _get_client(self):
@@ -87,7 +87,9 @@ class GeminiService:
             from google.genai import types
 
             # Use structured output JSON schema if supported by client
-            response = client.models.generate_content(
+            import asyncio
+            response = await asyncio.to_thread(
+                client.models.generate_content,
                 model=self.model_name,
                 contents=prompt,
                 config=types.GenerateContentConfig(
@@ -135,7 +137,9 @@ class GeminiService:
 
             image = Image.open(io.BytesIO(image_bytes))
 
-            response = client.models.generate_content(
+            import asyncio
+            response = await asyncio.to_thread(
+                client.models.generate_content,
                 model=self.model_name,
                 contents=[image, f"Analyze foliage condition for crop: {crop_hint}"],
                 config=types.GenerateContentConfig(
